@@ -103,7 +103,7 @@ def validate(model, dataloader, loss_function, device):
         device (torch.device): The device (CPU or CUDA) to perform computations on.
 
     Returns:
-        tuple: A tuple containing (average_loss, accuracy) on the dataset.
+        tuple: A tuple containing metrics (average_loss, accuracy, report) on the dataset.
     """
     model.eval()
     total_loss = 0
