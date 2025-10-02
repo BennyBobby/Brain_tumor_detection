@@ -6,10 +6,11 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 import torch.nn as nn
 import torch.optim as optim
+from sklearn.metrics import classification_report
 
 PROCESSED_DATA_PATH = "data/processed"
 BATCH_SIZE = 32
-EPOCHS = 20
+EPOCHS = 15
 LEARNING_RATE = 0.001
 MODEL_SAVED_PATH = f"model/brain_tumor_classifier_{EPOCHS}_epochs.pth"
 
@@ -106,20 +107,31 @@ def validate(model, dataloader, loss_function, device):
     """
     model.eval()
     total_loss = 0
-    correct_predictions = 0
+    all_labels = []
+    all_predictions = []
+
     with torch.no_grad():
         for images, labels in dataloader:
             images, labels = images.to(device), labels.to(device)
             outputs = model(images)
             loss = loss_function(outputs, labels)
             total_loss += loss.item()
-
             _, predicted = torch.max(outputs.data, 1)
-            correct_predictions += (predicted == labels).sum().item()
+            all_labels.extend(labels.cpu().tolist())
+            all_predictions.extend(predicted.cpu().tolist())
 
     avg_loss = total_loss / len(dataloader)
-    accuracy = correct_predictions / len(dataloader.dataset)
-    return avg_loss, accuracy
+    correct_predictions = sum(np.array(all_predictions) == np.array(all_labels))
+    accuracy = correct_predictions / len(all_labels)
+    target_names = list(dataloader.dataset.dataset.class_map.keys())
+    report = classification_report(
+        all_labels,
+        all_predictions,
+        target_names=target_names,
+        output_dict=True,
+        zero_division=0,
+    )
+    return avg_loss, accuracy, report
 
 
 if __name__ == "__main__":
@@ -141,14 +153,33 @@ if __name__ == "__main__":
 
     for epoch in range(EPOCHS):
         train_loss = train(model, train_dataloader, loss_fn, optimizer, device)
-        val_loss, val_accuracy = validate(model, val_dataloader, loss_fn, device)
+        val_loss, val_accuracy, val_report = validate(
+            model, val_dataloader, loss_fn, device
+        )
 
         print(
-            f"Epoch {epoch+1}/{EPOCHS}: "
-            f"Train Loss: {train_loss} | "
-            f"Val Loss: {val_loss} | "
-            f"Val Accuracy: {val_accuracy}"
+            f"\nEpoch {epoch+1}/{EPOCHS}: "
+            + f"Train Loss: {train_loss:.4f} | "
+            + f"Val Loss: {val_loss:.4f} | "
+            + f"Val Accuracy: {val_accuracy:.4f}"
         )
+        macro_f1 = val_report["macro avg"]["f1-score"]
+        print(f"F1-Score: {macro_f1:.4f}")
+        if "glioma_tumor" in val_report:
+            recall_glioma = val_report["glioma_tumor"]["recall"]
+            print(f"Recall for glioma tumor: {recall_glioma:.4f}")
+        if "meningioma_tumor" in val_report:
+            recall_meningioma = val_report["meningioma_tumor"]["recall"]
+            print(f"Recall for meningioma tumor: {recall_meningioma:.4f}")
+        if "pituitary_tumor" in val_report:
+            recall_pituitary = val_report["pituitary_tumor"]["recall"]
+            print(f"Recall for pituitary tumor: {recall_pituitary:.4f}")
+        if "no_tumor" in val_report:
+            precision_no_tumor = val_report["no_tumor"]["precision"]
+            print(
+                f"Precision for no tumor (Reliability of Negative): {precision_no_tumor:.4f}"
+            )
+
     if not os.path.exists("model"):
         os.makedirs("model")
     torch.save(model.state_dict(), MODEL_SAVED_PATH)
