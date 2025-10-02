@@ -2,3 +2,5 @@ data/raw/Testing
 data/processed/Testing
 data/raw/Training
 data/processed/Training
+__pycache__
+model
