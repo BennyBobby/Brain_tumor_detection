@@ -9,9 +9,9 @@ import torch.optim as optim
 
 PROCESSED_DATA_PATH = "data/processed"
 BATCH_SIZE = 32
-EPOCHS = 30
+EPOCHS = 20
 LEARNING_RATE = 0.001
-MODEL_SAVED_PATH = "model/brain_tumor_classifier.pth"
+MODEL_SAVED_PATH = f"model/brain_tumor_classifier_{EPOCHS}_epochs.pth"
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using {device} device")
